@@ -3,8 +3,12 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 let User = require("../models/user.model");
 
-const TOKEN_DURATION = "2m";
-
+const TOKEN_DURATION = "10m";
+const middleLog = (req, res, next) => {
+    console.log("Middle log mofos!");
+    console.log(req.body);
+    next();
+};
 router.route("/signup").post(async(req, res) => {
     const username = req.body.username;
     const password = await bcrypt.hash(req.body.password, 10);
@@ -22,17 +26,19 @@ router.route("/signup").post(async(req, res) => {
         .catch((error) => res.status(400).send({ error }));
 });
 
-router.route("/login").post((req, res) => {
+router.route("/login").post(middleLog, (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
+    console.log("logged in first");
     User.findOne({ username })
         .then((user) => {
-            console.log(user);
             bcrypt.compare(password, user.password, (err, result) => {
                 if (result) {
-                    const token = jwt.sign({ username }, process.env.DB_AUTH_KEY, {
-                        expiresIn: TOKEN_DURATION,
-                    });
+                    const token = jwt.sign({ username },
+                        process.env.DB_AUTH_KEY, {
+                            expiresIn: TOKEN_DURATION,
+                        }
+                    );
 
                     res.json({ token });
                 } else {
@@ -49,7 +55,7 @@ router.route("/logout").post((req, res) => {
     res.status(200).json({ token });
 });
 
-router.route("/validtoken").post((req, res) => {
+router.route("/verifytoken").post((req, res) => {
     jwt.verify(req.body.token, process.env.DB_AUTH_KEY, (error, decoded) => {
         if (decoded) {
             res.json({ valid: true });
